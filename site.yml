@@ -1,0 +1,82 @@
+---
+- name: Deploy lab4 service
+  hosts: lab4
+  become: true
+
+  vars:
+    service_root: /opt/lab4-service
+    service_html_dir: /opt/lab4-service/html
+    service_name: lab4-service
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create service root directory
+      ansible.builtin.file:
+        path: "{{ service_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create html directory
+      ansible.builtin.file:
+        path: "{{ service_html_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Deploy index.html
+      ansible.builtin.copy:
+        src: index.html
+        dest: "{{ service_html_dir }}/index.html"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart lab4 service
+
+    - name: Deploy service.sh
+      ansible.builtin.copy:
+        src: service.sh
+        dest: "{{ service_root }}/service.sh"
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart lab4 service
+
+    - name: Deploy systemd unit file
+      ansible.builtin.copy:
+        src: lab4-service.service
+        dest: /etc/systemd/system/lab4-service.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart lab4 service
+
+    - name: Check service availabiblty
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8000/
+        method: GET
+        status_code: 200
+      register: lab4_healthcheck
+      changed_when: false
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart lab4 service
+      ansible.builtin.systemd:
+        name: lab4-service
+        state: restarted
+        enabled: true
