@@ -1,0 +1,7 @@
+inventory.ini
+*.pem
+*.key
+*.crt
+*.csr
+*.ovpn
+__pycache__/
